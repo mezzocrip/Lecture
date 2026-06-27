@@ -46,7 +46,7 @@
             padding: 2px 4px;
             margin: 0 2px;
             border-radius: 4px;
-            transition: background-color 0.05s; /* Transition quasi instantanée */
+            transition: background-color 0.05s;
             display: inline-block;
         }
         .mot.attendu {
@@ -130,9 +130,13 @@
         return texte.split(/\s+/).filter(mot => mot.length > 0);
     }
 
+    // Sécurité renforcée pour nettoyer les mots et remplacer TOUTES les sortes d'apostrophes par un espace ou un format standard
     function nettoyerMot(mot) {
         if (!mot) return "";
-        return mot.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"«»’']/g, "").trim();
+        // On remplace d'abord l'apostrophe courbe ’ par l'apostrophe droit '
+        let motPropre = mot.toLowerCase().replace(/’/g, "'");
+        // On retire ensuite la ponctuation classique
+        return motPropre.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"«»]/g, "").trim();
     }
 
     texteInput.addEventListener('input', () => {
@@ -208,12 +212,13 @@
                 }
             }
 
-            const texteGlobal = (transcriptionFinale + " " + transcriptionEnCours).trim();
+            // On standardise aussi les apostrophes dans ce que l'iPhone comprend en direct
+            let texteGlobal = (transcriptionFinale + " " + transcriptionEnCours).toLowerCase().replace(/’/g, "'").trim();
+            
             const motAttendu = nettoyerMot(listeMotsBruts[indexActuel]);
             const spanActuel = document.getElementById("mot-" + indexActuel);
 
             if (spanActuel && motAttendu) {
-                // Détection ultra-rapide si le mot attendu apparaît n'importe où dans le flux récent
                 if (texteGlobal.includes(motAttendu)) {
                     spanActuel.className = "mot correct";
                     indexActuel++;
