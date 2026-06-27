@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entraînement à la Lecture</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            text-align: center;
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        #mot-a-lire {
+            font-size: 52px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 30px 0;
+            min-height: 70px;
+        }
+        button {
+            padding: 14px 28px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            transition: background 0.2s;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #statut {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #666;
+            font-style: italic;
+        }
+        #info-texte {
+            margin: 10px 0;
+            font-size: 14px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Générateur de Lecture Vocale</h1>
+    
+    <p>1. Collez votre texte ci-dessous :</p>
+    <textarea id="texte-input" placeholder="Collez votre texte ici..."></textarea>
+    <div id="info-texte">Mots détectés : 0</div>
+    
+    <br>
+    <button id="btn-start">Autoriser le micro & Démarrer</button>
+    
+    <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
+
+    <div id="mot-a-lire">Prêt à commencer</div>
+    <p id="statut">Cliquez sur le bouton pour activer le micro.</p>
+</div>
+
+<script>
+    let listeMots = [];
+    let indexActuel = 0;
+    let tempsDebut = 0;
+    let totalMots = 0;
+
+    const texteInput = document.getElementById('texte-input');
+    const infoTexte = document.getElementById('info-texte');
+    const zoneMot = document.getElementById('mot-a-lire');
+    const btnStart = document.getElementById('btn-start');
+    const statut = document.getElementById('statut');
+
+    function preparerMots(texte) {
+        if (!texte.trim()) return [];
+        return texte
+            .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"«»]/g, " ")
+            .split(/\s+/)
+            .filter(mot => mot.length > 0);
+    }
+
+    texteInput.addEventListener('input', () => {
+        const mots = preparerMots(texteInput.value);
+        infoTexte.textContent = `Mots détectés : ${mots.length}`;
+    });
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+        statut.textContent = "Votre navigateur ne supporte pas la reconnaissance vocale.";
+        btnStart.disabled = true;
+    } else {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'fr-FR';
+        recognition.continuous = true;
+        recognition.interimResults = false;
+
+        // Fonction pour démarrer la reconnaissance vocale
+        function lancerReconnaissance() {
+            indexActuel = 0;
+            totalMots = listeMots.length;
+            tempsDebut = performance.now();
+
+            zoneMot.textContent = listeMots[indexActuel];
+            statut.textContent = "Micro activé. Je vous écoute...";
+            btnStart.disabled = true;
+            texteInput.disabled = true;
+
+            recognition.start();
+        }
+
+        btnStart.addEventListener('click', async () => {
+            listeMots = preparerMots(texteInput.value);
+            
+            if (listeMots.length === 0) {
+                alert("Veuillez d'abord entrer du texte à lire.");
+                return;
+            }
+
+            statut.textContent = "Demande d'accès au micro...";
+
+            // FORCE L'IPHONE A DEMANDER L'AUTORISATION
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                // Si l'utilisateur accepte, on coupe le flux de test et on lance le vrai outil
+                stream.getTracks().forEach(track => track.stop());
+                lancerReconnaissance();
+            } catch (err) {
+                console.error(err);
+                statut.textContent = "Accès micro refusé. Allez dans Réglages > Safari > Microphone.";
+            }
+        });
+
+        recognition.onresult = (event) => {
+            const dernierResultat = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
+            const motAttendu = listeMots[indexActuel].toLowerCase().replace(/[^a-zA-Zà-üÀ-Ü]/g, "");
+
+            if (dernierResultat.includes(motAttendu)) {
+                indexActuel++;
+
+                if (indexActuel < listeMots.length) {
+                    zoneMot.textContent = listeMots[indexActuel];
+                    statut.textContent = "Correct ! Mot suivant.";
+                } else {
+                    const tempsFin = performance.now();
+                    const tempsTotalSecondes = ((tempsFin - tempsDebut) / 1000).toFixed(1);
+
+                    zoneMot.textContent = "Terminé ! 🎉";
+                    statut.innerHTML = `<strong>Résultat :</strong> Vous avez lu les <strong>${totalMots} mots</strong> en <strong>${tempsTotalSecondes} secondes</strong> !`;
+                    
+                    btnStart.disabled = false;
+                    texteInput.disabled = false;
+                    recognition.stop();
+                }
+            } else {
+                statut.textContent = `J'ai entendu "${dernierResultat}", mais j'attends "${listeMots[indexActuel]}"`;
+            }
+        };
+
+        recognition.onerror = (event) => {
+            if (event.error !== 'no-speech') {
+                statut.textContent = "Erreur micro : " + event.error + ". Assurez-vous d'être sur Safari ou Chrome.";
+                btnStart.disabled = false;
+                texteInput.disabled = false;
+            }
+        };
+
+        recognition.onend = () => {
+            if (indexActuel < listeMots.length && btnStart.disabled === true) {
+                recognition.start();
+            }
+        };
+    }
+</script>
+
+</body>
+</html>
