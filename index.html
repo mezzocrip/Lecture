@@ -134,7 +134,7 @@
         "C'est le soir dans la chambre d'Hugo. Lili regarde sous le lit mais elle n'a rien trouvé. Où est passé le doudou de Taoki ? C'est un petit ours bleu qui s'appelle Titi. Soudain, l'ours bouge tout seul dans l'armoire ! J'ai un peu peur, dit Hugo en chuchotant. Taoki s'approche doucement et ouvre la porte. Ouf ! C'est le petit chat noir qui joue avec l'ours ! Taoki rigole, attrape son doudou et fait un câlin à l'ami chat.",
         "C'est le matin, le soleil brille dans le jardin. Hugo et Lili jouent au ballon sur l'herbe verte. Soudain, un petit dragon vert arrive en volant : c'est Taoki ! Taoki rigole et attrape le ballon avec sa queue. Mais regardez là-bas, sous le grand arbre ! Un petit chat noir regarde nos trois amis. Taoki s'approche doucement et lui dit bonjour. Le petit chat a peur et grimpe vite sur une branche. Lili lui donne un peu de lait dans un bol.",
         "Aujourd'hui, c'est la fête à l'école ! Hugo a un beau chapeau de pirate. Lili a une robe de fée. Taoki arrive avec un grand sac. Qu'y a-t-il dans le sac ? C'est un gros gâteau d'or ! Tout le monde rigole bien. J'adore la musique, dit Lili en dansant. Le chat noir regarde par la fenêtre. C'est une super journée pour l'ami Taoki !",
-        "Taoki est à la cuisine avec Lili. J'ai faim, dit le petit dragon vert. Hugo apporte des pommes rouges et du chocolat. C'est bon ! Taoki prépares un bon jus de fruits. Mais il fait une bêtise ! Le jus coule partout sur la table de la cuisine. Lili lave le sol avec une éponge. Taoki est désolé mais il sourit.",
+        "Taoki est à la cuisine avec Lili. J'ai faim, dit le petit dragon vert. Hugo apporte des pommes rouges et du chocolat. C'est bon ! Taoki prépare un bon jus de fruits. Mais il fait une bêtise ! Le jus coule partout sur la table de la cuisine. Lili lave le sol avec une éponge. Taoki est désolé mais il sourit.",
         "Regardez, c'est l'heure d'aller à la mer ! Taoki met son beau maillot de bain rouge. Hugo et Lili courent sur le sable chaud. L'eau est bleue et très belle. Taoki plonge dans une vague en rigolant. Il trouve un joli coquillage rose sur la plage. J'ai trouvé un trésor, dit-il à Lili. C'est une journée magnifique à la plage !",
         "Le petit chat noir est malade aujourd'hui. Il reste couché dans son petit panier. Taoki apporte une couverture douce pour l'ami chat. Hugo donne un médicament. Lili caresse sa tête doucement. Le chat ronronne, il va déjà mieux ! Merci mes amis, semble dire le petit chat. C'est bien de s'occuper de lui.",
         "C'est l'automne, l'arbre du jardin perd ses feuilles. Hugo ramasse les feuilles avec un grand balai. Lili fait un énorme tas jaune et rouge. Taoki arrive en courant et saute dans les feuilles ! Tout s'envole dans le ciel ! C'est drôle, l'ami Taoki est tout rouge. Hugo rigole et recommence son travail avec Lili."
@@ -152,7 +152,6 @@
     const btnRandom = document.getElementById('btn-random');
     const statut = document.getElementById('statut');
 
-    // Nettoie le texte initial et retire complètement les ":" isolés pour ne pas bloquer l'enfant
     function preparerMots(texte) {
         if (!texte.trim()) return [];
         return texte.split(/\s+/).filter(mot => mot.length > 0 && mot !== ":");
@@ -162,7 +161,6 @@
         if (!mot) return "";
         let motPropre = mot.toLowerCase().replace(/’/g, "'");
         if (motPropre === "lili") return "lily";
-        // Nettoyage complet des ponctuations dont les deux-points attachés au mot
         return motPropre.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"«»:]/g, "").trim();
     }
 
@@ -255,7 +253,6 @@
             const spanActuel = document.getElementById("mot-" + indexActuel);
 
             if (spanActuel && motAttendu) {
-                // Système de validation avec équivalences intégrées (Lili et les pièges de Taoki)
                 let motValide = false;
                 
                 if (texteGlobal.includes(motAttendu)) {
@@ -263,14 +260,10 @@
                 } else if (motAttendu === "lily" && texteGlobal.includes("lili")) {
                     motValide = true;
                 } else if (motAttendu === "taoki") {
-                    // Si l'iPhone comprend une des erreurs classiques pour Taoki, on valide !
-                    if (texteGlobal.includes("t'as au lit") || 
-                        texteGlobal.includes("tao qui") || 
-                        texteGlobal.includes("t'ao qui") || 
-                        texteGlobal.includes("taki") ||
-                        texteGlobal.includes("taoqui")) {
-                        motValide = true;
-                    }
+                    // SOLUTION RADICALE : On découpe le flux audio en mots individuels
+                    let motsEntendus = texteGlobal.split(/\s+/);
+                    // Si l'un des mots commence par "ta" ou "tao", on valide immédiatement !
+                    motValide = motsEntendus.some(m => m.startsWith("ta") || m.startsWith("tao") || m === "taki" || m === "t'as");
                 }
 
                 if (motValide) {
