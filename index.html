@@ -104,6 +104,17 @@
             font-size: 14px;
             color: #555;
         }
+        #zone-debug {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #495057;
+            text-align: left;
+            font-family: monospace;
+            border: 1px dashed #ced4da;
+        }
     </style>
 </head>
 <body>
@@ -127,6 +138,12 @@
     <div id="zone-texte-complet">Le texte à lire s'affichera ici...</div>
     
     <p id="statut">Cliquez sur le bouton pour activer le micro.</p>
+
+    <div id="zone-debug">
+        <strong>🔍 Zone Diagnostic (Ce que l'iPhone entend) :</strong>
+        <div id="debug-audio" style="margin-top: 5px; color: #0056b3;">(En attente du micro...)</div>
+        <div id="debug-attendu" style="margin-top: 5px; color: #dc3545;">Mot attendu nettoyé : -</div>
+    </div>
 </div>
 
 <script>
@@ -145,12 +162,15 @@
     let tempsDebut = 0;
     let totalMots = 0;
 
+    // Récupération correcte des éléments HTML après le chargement de la page
     const texteInput = document.getElementById('texte-input');
     const infoTexte = document.getElementById('info-texte');
     const zoneTexteComplet = document.getElementById('zone-texte-complet');
     const btnStart = document.getElementById('btn-start');
     const btnRandom = document.getElementById('btn-random');
     const statut = document.getElementById('statut');
+    const debugAudio = document.getElementById('debug-audio');
+    const debugAttendu = document.getElementById('debug-attendu');
 
     function preparerMots(texte) {
         if (!texte.trim()) return [];
@@ -172,20 +192,24 @@
         infoTexte.textContent = `Mots détectés : ${mots.length}`;
     }
 
-    texteInput.addEventListener('input', rafraichirNombreMots);
+    if (texteInput) {
+        texteInput.addEventListener('input', rafraichirNombreMots);
+    }
 
-    btnRandom.addEventListener('click', () => {
-        const indexAleatoire = Math.floor(Math.random() * histoiresBanque.length);
-        texteInput.value = histoiresBanque[indexAleatoire];
-        rafraichirNombreMots();
-        statut.textContent = "Une histoire aléatoire a été chargée ! Cliquez sur Démarrer.";
-    });
+    if (btnRandom) {
+        btnRandom.addEventListener('click', () => {
+            const indexAleatoire = Math.floor(Math.random() * histoiresBanque.length);
+            texteInput.value = histoiresBanque[indexAleatoire];
+            rafraichirNombreMots();
+            statut.textContent = "Une histoire aléatoire a été chargée ! Cliquez sur Démarrer.";
+        });
+    }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
         statut.textContent = "Votre navigateur ne supporte pas la reconnaissance vocale.";
-        btnStart.disabled = true;
+        if (btnStart) btnStart.disabled = true;
     } else {
         const recognition = new SpeechRecognition();
         recognition.lang = 'fr-FR';
@@ -208,6 +232,7 @@
             if (indexActuel >= listeMotsBruts.length) return;
             
             const motAttendu = nettoyerMot(listeMotsBruts[indexActuel]);
+            if (debugAttendu) debugAttendu.textContent = `Mot attendu nettoyé : "${motAttendu}"`;
             
             if (motAttendu === "taoki" || motAttendu === "") {
                 const spanActuel = document.getElementById("mot-" + indexActuel);
@@ -252,12 +277,107 @@
             recognition.start();
         }
 
-        btnStart.addEventListener('click', async () => {
-            listeMotsBruts = preparerMots(texteInput.value);
+        if (btnStart) {
+            btnStart.addEventListener('click', async () => {
+                listeMotsBruts = preparerMots(texteInput.value);
+                
+                if (listeMotsBruts.length === 0) {
+                    alert("Veuillez d'abord entrer du texte ou cliquer sur 'Histoire Aléatoire'.");
+                    return;
+                }
+
+                statut.textContent = "Demande d'accès au micro...";
+
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    stream.getTracks().forEach(track => track.stop());
+                    lancerReconnaissance();
+                } catch (err) {
+                    console.error(err);
+                    statut.textContent = "Accès micro refusé. Allez dans Réglages > Safari > Microphone.";
+                }
+            });
+        }
+
+        recognition.onresult = (event) => {
+            let transcriptionEnCours = "";
+            let transcriptionFinale = "";
             
-            if (listeMotsBruts.length === 0) {
-                alert("Veuillez d'abord entrer du texte ou cliquer sur 'Histoire Aléatoire'.");
-                return;
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    transcriptionFinale += event.results[i][0].transcript.toLowerCase() + " ";
+                } else {
+                    transcriptionEnCours += event.results[i][0].transcript.toLowerCase() + " ";
+                }
             }
 
-            statut
+            let texteGlobal = (transcriptionFinale + " " + transcriptionEnCours).toLowerCase().replace(/’/g, "'").replace(/-/g, " ");
+            texteGlobal = texteGlobal.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"«»!]/g, "").trim();
+            
+            if (debugAudio) debugAudio.textContent = `Entendu : "${texteGlobal}"`;
+            
+            const motAttendu = nettoyerMot(listeMotsBruts[indexActuel]);
+            const spanActuel = document.getElementById("mot-" + indexActuel);
+
+            if (spanActuel && motAttendu) {
+                let motValide = false;
+                
+                if (texteGlobal.includes(motAttendu)) {
+                    motValide = true;
+                } else if (motAttendu === "est" || motAttendu === "et") {
+                    if (texteGlobal.includes("est") || texteGlobal.includes("et") || texteGlobal.includes("es")) {
+                        motValide = true;
+                    }
+                } else if (motAttendu === "mais" || motAttendu === "mes") {
+                    if (texteGlobal.includes("mais") || texteGlobal.includes("mes")) {
+                        motValide = true;
+                    }
+                } else if (motAttendu === "lili") {
+                    if (texteGlobal.includes("lili") || texteGlobal.includes("lily") || texteGlobal.includes("lyly") || texteGlobal.includes("lylie")) {
+                        motValide = true;
+                    }
+                } else if (motAttendu === "la bas" || motAttendu === "là bas") {
+                    if (texteGlobal.includes("la bas") || texteGlobal.includes("là bas")) {
+                        motValide = true;
+                    }
+                } else if (motAttendu === "fait" || motAttendu === "fais") {
+                    if (texteGlobal.includes("fait") || texteGlobal.includes("fais") || texteGlobal.includes("fête") || texteGlobal.includes("faites") || texteGlobal.includes("faie")) {
+                        motValide = true;
+                    }
+                }
+
+                if (motValide) {
+                    spanActuel.className = "mot correct";
+                    indexActuel++;
+
+                    if (indexActuel < listeMotsBruts.length) {
+                        const spanSuivant = document.getElementById("mot-" + indexActuel);
+                        if (spanSuivant) spanSuivant.classList.add('attendu');
+                        
+                        verifierEtPasserMotsSpeciaux();
+                    } else {
+                        finaliserLecture();
+                    }
+                }
+            }
+        };
+
+        recognition.onerror = (event) => {
+            if (event.error !== 'no-speech') {
+                statut.textContent = "Erreur micro : " + event.error;
+                btnStart.disabled = false;
+                texteInput.disabled = false;
+                btnRandom.disabled = false;
+            }
+        };
+
+        recognition.onend = () => {
+            if (indexActuel < listeMotsBruts.length && btnStart.disabled === true) {
+                recognition.start();
+            }
+        };
+    }
+</script>
+
+</body>
+</html>
