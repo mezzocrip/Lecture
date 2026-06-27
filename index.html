@@ -31,6 +31,11 @@
             resize: vertical;
             box-sizing: border-box;
         }
+        .actions-btn {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
         #zone-texte-complet {
             font-size: 24px;
             line-height: 1.6;
@@ -67,15 +72,27 @@
             font-size: 18px;
             font-weight: bold;
             cursor: pointer;
-            background-color: #007BFF;
-            color: white;
             border: none;
             border-radius: 8px;
             transition: background 0.2s;
+        }
+        #btn-start {
+            background-color: #007BFF;
+            color: white;
             width: 100%;
         }
-        button:hover {
+        #btn-start:hover {
             background-color: #0056b3;
+        }
+        #btn-random {
+            background-color: #28a745;
+            color: white;
+            flex: 1;
+            font-size: 15px;
+            padding: 10px;
+        }
+        #btn-random:hover {
+            background-color: #218838;
         }
         button:disabled {
             background-color: #cccccc;
@@ -99,9 +116,13 @@
 <div class="container">
     <h1>Générateur de Lecture Vocale</h1>
     
-    <p>1. Collez votre texte ci-dessous :</p>
+    <p>1. Collez votre texte ou générez une histoire :</p>
     <textarea id="texte-input" placeholder="Collez votre texte ici..."></textarea>
-    <div id="info-texte">Mots détectés : 0</div>
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin: 10px 0;">
+        <div id="info-texte">Mots détectés : 0</div>
+        <button id="btn-random">🎲 Histoire Aléatoire</button>
+    </div>
     
     <br>
     <button id="btn-start">Autoriser le micro & Démarrer</button>
@@ -114,6 +135,17 @@
 </div>
 
 <script>
+    // Banque d'histoires courtes CP avec Taoki, Hugo et Lili
+    const histoiresBanque = [
+        "C'est le soir dans la chambre d'Hugo. Lili regarde sous le lit mais elle n'a rien trouvé. Où est passé le doudou de Taoki ? C'est un petit ours bleu qui s'appelle Titi. Soudain, l'ours bouge tout seul dans l'armoire ! J'ai un peu peur, dit Hugo en chuchotant. Taoki s'approche doucement et ouvre la porte. Ouf ! C'est le petit chat noir qui joue avec l'ours ! Taoki rigole, attrape son doudou et fait un câlin à l'ami chat.",
+        "C'est le matin, le soleil brille dans le jardin. Hugo et Lili jouent au ballon sur l'herbe verte. Soudain, un petit dragon vert arrive en volant : c'est Taoki ! Taoki rigole et attrape le ballon avec sa queue. Mais regardez là-bas, sous le grand arbre ! Un petit chat noir regarde nos trois amis. Taoki s'approche doucement et lui dit bonjour. Le petit chat a peur et grimpe vite sur une branche. Lili lui donne un peu de lait dans un bol.",
+        "Aujourd'hui, c'est la fête à l'école ! Hugo a un beau chapeau de pirate. Lili a une robe de fée. Taoki arrive avec un grand sac. Qu'y a-t-il dans le sac ? C'est un gros gâteau d'or ! Tout le monde rigole bien. J'adore la musique, dit Lili en dansant. Le chat noir regarde par la fenêtre. C'est une super journée pour l'ami Taoki !",
+        "Taoki est à la cuisine avec Lili. J'ai faim, dit le petit dragon vert. Hugo apporte des pommes rouges et du chocolat. C'est bon ! Taoki prépare un bon jus de fruits. Mais il fait une bêtise ! Le jus coule partout sur la table de la cuisine. Lili lave le sol avec une éponge. Taoki est désolé mais il sourit.",
+        "Regardez, c'est l'heure d'aller à la mer ! Taoki met son beau maillot de bain rouge. Hugo et Lili courent sur le sable chaud. L'eau est bleue et très belle. Taoki plonge dans une vague en rigolant. Il trouve un joli coquillage rose sur la plage. J'ai trouvé un trésor, dit-il à Lili. C'est une journée magnifique à la plage !",
+        "Le petit chat noir est malade aujourd'hui. Il reste couché dans son petit panier. Taoki apporte une couverture douce pour l'ami chat. Hugo donne un médicament. Lili caresse sa tête doucement. Le chat ronronne, il va déjà mieux ! Merci mes amis, semble dire le petit chat. C'est bien de s'occuper de lui.",
+        "C'est l'automne, l'arbre du jardin perd ses feuilles. Hugo ramasse les feuilles avec un grand balai. Lili fait un énorme tas jaune et rouge. Taoki arrive en courant et saute dans les feuilles ! Tout s'envole dans le ciel ! C'est drôle, l'ami Taoki est tout rouge. Hugo rigole et recommence son travail avec Lili."
+    ];
+
     let listeMotsBruts = [];
     let indexActuel = 0;
     let tempsDebut = 0;
@@ -123,6 +155,7 @@
     const infoTexte = document.getElementById('info-texte');
     const zoneTexteComplet = document.getElementById('zone-texte-complet');
     const btnStart = document.getElementById('btn-start');
+    const btnRandom = document.getElementById('btn-random');
     const statut = document.getElementById('statut');
 
     function preparerMots(texte) {
@@ -133,14 +166,23 @@
     function nettoyerMot(mot) {
         if (!mot) return "";
         let motPropre = mot.toLowerCase().replace(/’/g, "'");
-        // Équivalence pour Lili / Lily
         if (motPropre === "lili") return "lily";
         return motPropre.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"«»]/g, "").trim();
     }
 
-    texteInput.addEventListener('input', () => {
+    function rafraichirNombreMots() {
         const mots = preparerMots(texteInput.value);
         infoTexte.textContent = `Mots détectés : ${mots.length}`;
+    }
+
+    texteInput.addEventListener('input', rafraichirNombreMots);
+
+    // Événement clic pour générer une histoire aléatoire
+    btnRandom.addEventListener('click', () => {
+        const indexAleatoire = Math.floor(Math.random() * histoiresBanque.length);
+        texteInput.value = histoiresBanque[indexAleatoire];
+        rafraichirNombreMots();
+        statut.textContent = "Une histoire aléatoire a été chargée ! Cliquez sur Démarrer.";
     });
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -175,6 +217,7 @@
             statut.textContent = "Lecture en cours...";
             btnStart.disabled = true;
             texteInput.disabled = true;
+            btnRandom.disabled = true;
 
             recognition.start();
         }
@@ -183,7 +226,7 @@
             listeMotsBruts = preparerMots(texteInput.value);
             
             if (listeMotsBruts.length === 0) {
-                alert("Veuillez d'abord entrer du texte à lire.");
+                alert("Veuillez d'abord entrer du texte ou cliquer sur 'Histoire Aléatoire'.");
                 return;
             }
 
@@ -217,7 +260,6 @@
             const spanActuel = document.getElementById("mot-" + indexActuel);
 
             if (spanActuel && motAttendu) {
-                // On valide si le mot exact est là OU si l'alternative (comme lily pour lili) est entendue
                 if (texteGlobal.includes(motAttendu) || (motAttendu === "lily" && texteGlobal.includes("lili"))) {
                     spanActuel.className = "mot correct";
                     indexActuel++;
@@ -233,6 +275,7 @@
                         
                         btnStart.disabled = false;
                         texteInput.disabled = false;
+                        btnRandom.disabled = false;
                         recognition.stop();
                     }
                 }
@@ -244,6 +287,7 @@
                 statut.textContent = "Erreur micro : " + event.error;
                 btnStart.disabled = false;
                 texteInput.disabled = false;
+                btnRandom.disabled = false;
             }
         };
 
