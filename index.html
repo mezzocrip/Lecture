@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Entraînement à la Lecture</title>
+    <title>Entraînement à la Lecture Rapide</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -46,7 +46,7 @@
             padding: 2px 4px;
             margin: 0 2px;
             border-radius: 4px;
-            transition: background-color 0.3s;
+            transition: background-color 0.1s; /* Accélère la transition visuelle */
             display: inline-block;
         }
         .mot.attendu {
@@ -149,7 +149,9 @@
         const recognition = new SpeechRecognition();
         recognition.lang = 'fr-FR';
         recognition.continuous = true;
-        recognition.interimResults = false;
+        
+        // MODIFICATION CRITIQUE : Analyse en temps réel sans attendre de pause
+        recognition.interimResults = true; 
 
         function genererAffichageTexte() {
             zoneTexteComplet.innerHTML = "";
@@ -197,20 +199,26 @@
         });
 
         recognition.onresult = (event) => {
-            const dernierResultat = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
-            const motAttendu = nettoyerMot(listeMotsBruts[indexActuel]);
+            let texteEntenduOutil = "";
+            
+            // On accumule tout ce qui est capté en temps réel dans cette session d'écoute
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                texteEntenduOutil += event.results[i][0].transcript.toLowerCase();
+            }
 
+            const motAttendu = nettoyerMot(listeMotsBruts[indexActuel]);
             const spanActuel = document.getElementById("mot-" + indexActuel);
 
             if (spanActuel) {
-                if (dernierResultat.includes(motAttendu) || motAttendu.includes(dernierResultat)) {
+                // Dès que le flux en continu contient le mot attendu, on valide instantanément
+                if (texteEntenduOutil.includes(motAttendu)) {
                     spanActuel.className = "mot correct";
                     indexActuel++;
 
                     if (indexActuel < listeMotsBruts.length) {
                         const spanSuivant = document.getElementById("mot-" + indexActuel);
                         if (spanSuivant) spanSuivant.classList.add('attendu');
-                        statut.textContent = "Correct !";
+                        statut.textContent = "En cours de lecture...";
                     } else {
                         const tempsFin = performance.now();
                         const tempsTotalSecondes = ((tempsFin - tempsDebut) / 1000).toFixed(1);
@@ -222,8 +230,8 @@
                         recognition.stop();
                     }
                 } else {
-                    spanActuel.className = "mot attendu erreur";
-                    statut.textContent = `J'ai entendu "${dernierResultat}". Réessayez pour le mot en rouge.`;
+                    // Si on détecte du bruit/autre mot sans valider le mot attendu, on prévient gentiment
+                    statut.textContent = "Écoute en cours...";
                 }
             }
         };
