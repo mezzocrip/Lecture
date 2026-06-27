@@ -164,9 +164,8 @@
         if (!mot) return "";
         let motPropre = mot.toLowerCase().replace(/’/g, "'");
         if (motPropre === "lili") return "lily";
-        // Remplacement crucial : on transforme le tiret en espace pour gérer "là-bas" -> "là bas"
         motPropre = motPropre.replace(/-/g, " ");
-        return motPropre.replace(/[.,\/#!$%\^&\*;:{}=\_`~()?"«»!]/g, "").trim();
+        return motPropre.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"«»!]/g, "").trim();
     }
 
     function rafraichirNombreMots() {
@@ -286,7 +285,6 @@
                 }
             }
 
-            // On nettoie aussi le flux audio des tirets au cas où
             let texteGlobal = (transcriptionFinale + " " + transcriptionEnCours).toLowerCase().replace(/’/g, "'").replace(/-/g, " ").trim();
             
             const motAttendu = nettoyerMot(listeMotsBruts[indexActuel]);
@@ -301,6 +299,11 @@
                     motValide = true;
                 } else if ((motAttendu === "la bas" || motAttendu === "là bas") && (texteGlobal.includes("la bas") || texteGlobal.includes("là bas"))) {
                     motValide = true;
+                } else if (motAttendu === "fait" || motAttendu === "fais") {
+                    // Sécurité phonétique pour le mot "fait"
+                    if (texteGlobal.includes("fait") || texteGlobal.includes("fais") || texteGlobal.includes("fête") || texteGlobal.includes("faites") || texteGlobal.includes("faie")) {
+                        motValide = true;
+                    }
                 }
 
                 if (motValide) {
