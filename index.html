@@ -156,6 +156,7 @@
     function nettoyerMot(mot) {
         if (!mot) return "";
         let motPropre = mot.toLowerCase().replace(/’/g, "'");
+        motPropre = motPropre.replace("d'ésolé", "désolé");
         motPropre = motPropre.replace(/-/g, " ");
         return motPropre.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"«»!]/g, "").trim();
     }
@@ -277,7 +278,6 @@
                 }
             }
 
-            // On nettoie soigneusement le flux audio
             let texteGlobal = (transcriptionFinale + " " + transcriptionEnCours).toLowerCase().replace(/’/g, "'").replace(/-/g, " ");
             texteGlobal = texteGlobal.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"«»!]/g, "").trim();
             
@@ -289,6 +289,16 @@
                 
                 if (texteGlobal.includes(motAttendu)) {
                     motValide = true;
+                } else if (motAttendu === "est" || motAttendu === "et") {
+                    // Flexibilité totale pour est / et
+                    if (texteGlobal.includes("est") || texteGlobal.includes("et")) {
+                        motValide = true;
+                    }
+                } else if (motAttendu === "mais" || motAttendu === "mes") {
+                    // Flexibilité totale pour mais / mes
+                    if (texteGlobal.includes("mais") || texteGlobal.includes("mes")) {
+                        motValide = true;
+                    }
                 } else if (motAttendu === "lili") {
                     if (texteGlobal.includes("lili") || texteGlobal.includes("lily") || texteGlobal.includes("lyly") || texteGlobal.includes("lylie")) {
                         motValide = true;
