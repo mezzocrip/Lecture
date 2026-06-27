@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Entraînement à la Lecture Rapide</title>
+    <title>Entraînement à la Lecture Instantanée</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -46,7 +46,7 @@
             padding: 2px 4px;
             margin: 0 2px;
             border-radius: 4px;
-            transition: background-color 0.1s; /* Accélère la transition visuelle */
+            transition: background-color 0.05s; /* Transition quasi instantanée */
             display: inline-block;
         }
         .mot.attendu {
@@ -149,8 +149,6 @@
         const recognition = new SpeechRecognition();
         recognition.lang = 'fr-FR';
         recognition.continuous = true;
-        
-        // MODIFICATION CRITIQUE : Analyse en temps réel sans attendre de pause
         recognition.interimResults = true; 
 
         function genererAffichageTexte() {
@@ -171,7 +169,7 @@
             tempsDebut = performance.now();
 
             genererAffichageTexte();
-            statut.textContent = "Micro activé. Je vous écoute...";
+            statut.textContent = "Lecture en cours...";
             btnStart.disabled = true;
             texteInput.disabled = true;
 
@@ -199,26 +197,30 @@
         });
 
         recognition.onresult = (event) => {
-            let texteEntenduOutil = "";
+            let transcriptionEnCours = "";
+            let transcriptionFinale = "";
             
-            // On accumule tout ce qui est capté en temps réel dans cette session d'écoute
             for (let i = event.resultIndex; i < event.results.length; ++i) {
-                texteEntenduOutil += event.results[i][0].transcript.toLowerCase();
+                if (event.results[i].isFinal) {
+                    transcriptionFinale += event.results[i][0].transcript.toLowerCase() + " ";
+                } else {
+                    transcriptionEnCours += event.results[i][0].transcript.toLowerCase() + " ";
+                }
             }
 
+            const texteGlobal = (transcriptionFinale + " " + transcriptionEnCours).trim();
             const motAttendu = nettoyerMot(listeMotsBruts[indexActuel]);
             const spanActuel = document.getElementById("mot-" + indexActuel);
 
-            if (spanActuel) {
-                // Dès que le flux en continu contient le mot attendu, on valide instantanément
-                if (texteEntenduOutil.includes(motAttendu)) {
+            if (spanActuel && motAttendu) {
+                // Détection ultra-rapide si le mot attendu apparaît n'importe où dans le flux récent
+                if (texteGlobal.includes(motAttendu)) {
                     spanActuel.className = "mot correct";
                     indexActuel++;
 
                     if (indexActuel < listeMotsBruts.length) {
                         const spanSuivant = document.getElementById("mot-" + indexActuel);
                         if (spanSuivant) spanSuivant.classList.add('attendu');
-                        statut.textContent = "En cours de lecture...";
                     } else {
                         const tempsFin = performance.now();
                         const tempsTotalSecondes = ((tempsFin - tempsDebut) / 1000).toFixed(1);
@@ -229,9 +231,6 @@
                         texteInput.disabled = false;
                         recognition.stop();
                     }
-                } else {
-                    // Si on détecte du bruit/autre mot sans valider le mot attendu, on prévient gentiment
-                    statut.textContent = "Écoute en cours...";
                 }
             }
         };
