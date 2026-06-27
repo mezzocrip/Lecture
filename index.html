@@ -23,7 +23,7 @@
         }
         textarea {
             width: 100%;
-            height: 120px;
+            height: 100px;
             padding: 10px;
             border: 2px solid #ddd;
             border-radius: 8px;
@@ -31,12 +31,38 @@
             resize: vertical;
             box-sizing: border-box;
         }
-        #mot-a-lire {
-            font-size: 52px;
-            font-weight: bold;
-            color: #2c3e50;
+        /* Zone du texte complet à lire */
+        #zone-texte-complet {
+            font-size: 24px;
+            line-height: 1.6;
+            text-align: left;
             margin: 30px 0;
-            min-height: 70px;
+            padding: 20px;
+            background-color: #fafafa;
+            border-radius: 8px;
+            border: 1px solid #eee;
+            min-height: 100px;
+        }
+        /* Styles pour le surlignage des mots */
+        .mot {
+            padding: 2px 4px;
+            margin: 0 2px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+            display: inline-block;
+        }
+        .mot.attendu {
+            background-color: #cfe2ff; /* Bleu : mot actuel à lire */
+            font-weight: bold;
+        }
+        .mot.correct {
+            background-color: #d1e7dd; /* Vert : bien lu */
+            color: #0f5132;
+        }
+        .mot.erreur {
+            background-color: #f8d7da; /* Rouge : mal lu */
+            color: #842029;
+            font-weight: bold;
         }
         button {
             padding: 14px 28px;
@@ -84,28 +110,33 @@
     
     <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
 
-    <div id="mot-a-lire">Prêt à commencer</div>
+    <!-- Ici on affiche tout le texte avec le surlignage -->
+    <div id="zone-texte-complet">Le texte à lire s'affichera ici...</div>
+    
     <p id="statut">Cliquez sur le bouton pour activer le micro.</p>
 </div>
 
 <script>
-    let listeMots = [];
+    let listeMots Bruts = [];
     let indexActuel = 0;
     let tempsDebut = 0;
     let totalMots = 0;
 
     const texteInput = document.getElementById('texte-input');
     const infoTexte = document.getElementById('info-texte');
-    const zoneMot = document.getElementById('mot-a-lire');
+    const zoneTexteComplet = document.getElementById('zone-texte-complet');
     const btnStart = document.getElementById('btn-start');
     const statut = document.getElementById('statut');
 
+    // Découpe le texte en gardant les espaces pour l'affichage
     function preparerMots(texte) {
         if (!texte.trim()) return [];
-        return texte
-            .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"«»]/g, " ")
-            .split(/\s+/)
-            .filter(mot => mot.length > 0);
+        return texte.split(/\s+/).filter(mot => mot.length > 0);
+    }
+
+    // Nettoie un mot pour la comparaison vocale (enlève la ponctuation)
+    function nettoyerMot(mot) {
+        return mot.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"«»]/g, "").trim();
     }
 
     texteInput.addEventListener('input', () => {
@@ -124,13 +155,24 @@
         recognition.continuous = true;
         recognition.interimResults = false;
 
-        // Fonction pour démarrer la reconnaissance vocale
+        function genererAffichageTexte() {
+            zoneTexteComplet.innerHTML = "";
+            listeMotsBruts.forEach((mot, index) => {
+                const span = document.createElement('span');
+                span.textContent = mot + " ";
+                span.className = "mot";
+                span.id = "mot-" + index;
+                if (index === 0) span.classList.add('attendu');
+                zoneTexteComplet.appendChild(span);
+            });
+        }
+
         function lancerReconnaissance() {
             indexActuel = 0;
-            totalMots = listeMots.length;
+            totalMots = listeMotsBruts.length;
             tempsDebut = performance.now();
 
-            zoneMot.textContent = listeMots[indexActuel];
+            genererAffichageTexte();
             statut.textContent = "Micro activé. Je vous écoute...";
             btnStart.disabled = true;
             texteInput.disabled = true;
@@ -139,19 +181,17 @@
         }
 
         btnStart.addEventListener('click', async () => {
-            listeMots = preparerMots(texteInput.value);
+            listeMotsBruts = preparerMots(texteInput.value);
             
-            if (listeMots.length === 0) {
+            if (listeMotsBruts.length === 0) {
                 alert("Veuillez d'abord entrer du texte à lire.");
                 return;
             }
 
             statut.textContent = "Demande d'accès au micro...";
 
-            // FORCE L'IPHONE A DEMANDER L'AUTORISATION
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                // Si l'utilisateur accepte, on coupe le flux de test et on lance le vrai outil
                 stream.getTracks().forEach(track => track.stop());
                 lancerReconnaissance();
             } catch (err) {
@@ -162,40 +202,48 @@
 
         recognition.onresult = (event) => {
             const dernierResultat = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
-            const motAttendu = listeMots[indexActuel].toLowerCase().replace(/[^a-zA-Zà-üÀ-Ü]/g, "");
+            const motAttendu = nettoyerMot(listeMotsBruts[indexActuel]);
+
+            const spanActuel = document.getElementById("mot-" + indexActuel);
 
             if (dernierResultat.includes(motAttendu)) {
+                // Succès : On passe au vert
+                spanActuel.className = "mot correct";
                 indexActuel++;
 
-                if (indexActuel < listeMots.length) {
-                    zoneMot.textContent = listeMots[indexActuel];
-                    statut.textContent = "Correct ! Mot suivant.";
+                if (indexActuel < listeMotsBruts.length) {
+                    // On surligne le mot suivant en bleu
+                    const spanSuivant = document.getElementById("mot-" + indexActuel);
+                    spanSuivant.classList.add('attendu');
+                    statut.textContent = "Correct !";
                 } else {
+                    // Fin du texte
                     const tempsFin = performance.now();
                     const tempsTotalSecondes = ((tempsFin - tempsDebut) / 1000).toFixed(1);
 
-                    zoneMot.textContent = "Terminé ! 🎉";
-                    statut.innerHTML = `<strong>Résultat :</strong> Vous avez lu les <strong>${totalMots} mots</strong> en <strong>${tempsTotalSecondes} secondes</strong> !`;
+                    statut.innerHTML = `<strong>Félicitations ! 🎉</strong> Vous avez lu les <strong>${totalMots} mots</strong> en <strong>${tempsTotalSecondes} secondes</strong> !`;
                     
                     btnStart.disabled = false;
                     texteInput.disabled = false;
                     recognition.stop();
                 }
             } else {
-                statut.textContent = `J'ai entendu "${dernierResultat}", mais j'attends "${listeMots[indexActuel]}"`;
+                // Erreur : On applique le rouge temporairement
+                spanActuel.className = "mot attendu erreur";
+                statut.textContent = `J'ai entendu "${dernierResultat}". Réessayez pour le mot en rouge.`;
             }
         };
 
         recognition.onerror = (event) => {
             if (event.error !== 'no-speech') {
-                statut.textContent = "Erreur micro : " + event.error + ". Assurez-vous d'être sur Safari ou Chrome.";
+                statut.textContent = "Erreur micro : " + event.error;
                 btnStart.disabled = false;
                 texteInput.disabled = false;
             }
         };
 
         recognition.onend = () => {
-            if (indexActuel < listeMots.length && btnStart.disabled === true) {
+            if (indexActuel < listeMotsBruts.length && btnStart.disabled === true) {
                 recognition.start();
             }
         };
