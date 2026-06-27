@@ -145,6 +145,13 @@
     let tempsDebut = 0;
     let totalMots = 0;
 
+    const texteInput = document.getElementById('texte-input');
+    const infoTexte = document.getElementById('info-texte');
+    const zoneTexteComplet = document.getElementById('zone-texte-complet');
+    const btnStart = document.getElementById('btn-start');
+    const btnRandom = document.getElementById('btn-random');
+    const statut = document.getElementById('statut');
+
     function preparerMots(texte) {
         if (!texte.trim()) return [];
         return texte.split(/\s+/).filter(mot => {
@@ -156,7 +163,6 @@
     function nettoyerMot(mot) {
         if (!mot) return "";
         let motPropre = mot.toLowerCase().replace(/’/g, "'");
-        motPropre = motPropre.replace("d'ésolé", "désolé");
         motPropre = motPropre.replace(/-/g, " ");
         return motPropre.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"«»!]/g, "").trim();
     }
@@ -254,97 +260,4 @@
                 return;
             }
 
-            statut.textContent = "Demande d'accès au micro...";
-
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                stream.getTracks().forEach(track => track.stop());
-                lancerReconnaissance();
-            } catch (err) {
-                console.error(err);
-                statut.textContent = "Accès micro refusé. Allez dans Réglages > Safari > Microphone.";
-            }
-        });
-
-        recognition.onresult = (event) => {
-            let transcriptionEnCours = "";
-            let transcriptionFinale = "";
-            
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                    transcriptionFinale += event.results[i][0].transcript.toLowerCase() + " ";
-                } else {
-                    transcriptionEnCours += event.results[i][0].transcript.toLowerCase() + " ";
-                }
-            }
-
-            let texteGlobal = (transcriptionFinale + " " + transcriptionEnCours).toLowerCase().replace(/’/g, "'").replace(/-/g, " ");
-            texteGlobal = texteGlobal.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"«»!]/g, "").trim();
-            
-            const motAttendu = nettoyerMot(listeMotsBruts[indexActuel]);
-            const spanActuel = document.getElementById("mot-" + indexActuel);
-
-            if (spanActuel && motAttendu) {
-                let motValide = false;
-                
-                if (texteGlobal.includes(motAttendu)) {
-                    motValide = true;
-                } else if (motAttendu === "est" || motAttendu === "et") {
-                    // Flexibilité totale pour est / et
-                    if (texteGlobal.includes("est") || texteGlobal.includes("et")) {
-                        motValide = true;
-                    }
-                } else if (motAttendu === "mais" || motAttendu === "mes") {
-                    // Flexibilité totale pour mais / mes
-                    if (texteGlobal.includes("mais") || texteGlobal.includes("mes")) {
-                        motValide = true;
-                    }
-                } else if (motAttendu === "lili") {
-                    if (texteGlobal.includes("lili") || texteGlobal.includes("lily") || texteGlobal.includes("lyly") || texteGlobal.includes("lylie")) {
-                        motValide = true;
-                    }
-                } else if (motAttendu === "la bas" || motAttendu === "là bas") {
-                    if (texteGlobal.includes("la bas") || texteGlobal.includes("là bas")) {
-                        motValide = true;
-                    }
-                } else if (motAttendu === "fait" || motAttendu === "fais") {
-                    if (texteGlobal.includes("fait") || texteGlobal.includes("fais") || texteGlobal.includes("fête") || texteGlobal.includes("faites") || texteGlobal.includes("faie")) {
-                        motValide = true;
-                    }
-                }
-
-                if (motValide) {
-                    spanActuel.className = "mot correct";
-                    indexActuel++;
-
-                    if (indexActuel < listeMotsBruts.length) {
-                        const spanSuivant = document.getElementById("mot-" + indexActuel);
-                        if (spanSuivant) spanSuivant.classList.add('attendu');
-                        
-                        verifierEtPasserMotsSpeciaux();
-                    } else {
-                        finaliserLecture();
-                    }
-                }
-            }
-        };
-
-        recognition.onerror = (event) => {
-            if (event.error !== 'no-speech') {
-                statut.textContent = "Erreur micro : " + event.error;
-                btnStart.disabled = false;
-                texteInput.disabled = false;
-                btnRandom.disabled = false;
-            }
-        };
-
-        recognition.onend = () => {
-            if (indexActuel < listeMotsBruts.length && btnStart.disabled === true) {
-                recognition.start();
-            }
-        };
-    }
-</script>
-
-</body>
-</html>
+            statut
