@@ -163,7 +163,6 @@
     function nettoyerMot(mot) {
         if (!mot) return "";
         let motPropre = mot.toLowerCase().replace(/’/g, "'");
-        if (motPropre === "lili") return "lily";
         motPropre = motPropre.replace(/-/g, " ");
         return motPropre.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"«»!]/g, "").trim();
     }
@@ -295,12 +294,14 @@
                 
                 if (texteGlobal.includes(motAttendu)) {
                     motValide = true;
-                } else if (motAttendu === "lily" && texteGlobal.includes("lili")) {
-                    motValide = true;
+                } else if (motAttendu === "lili") {
+                    // Tolérance complète pour Lili
+                    if (texteGlobal.includes("lili") || texteGlobal.includes("lily") || texteGlobal.includes("lyly") || texteGlobal.includes("lylie")) {
+                        motValide = true;
+                    }
                 } else if ((motAttendu === "la bas" || motAttendu === "là bas") && (texteGlobal.includes("la bas") || texteGlobal.includes("là bas"))) {
                     motValide = true;
                 } else if (motAttendu === "fait" || motAttendu === "fais") {
-                    // Sécurité phonétique pour le mot "fait"
                     if (texteGlobal.includes("fait") || texteGlobal.includes("fais") || texteGlobal.includes("fête") || texteGlobal.includes("faites") || texteGlobal.includes("faie")) {
                         motValide = true;
                     }
