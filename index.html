@@ -31,7 +31,6 @@
             resize: vertical;
             box-sizing: border-box;
         }
-        /* Zone du texte complet à lire */
         #zone-texte-complet {
             font-size: 24px;
             line-height: 1.6;
@@ -43,7 +42,6 @@
             border: 1px solid #eee;
             min-height: 100px;
         }
-        /* Styles pour le surlignage des mots */
         .mot {
             padding: 2px 4px;
             margin: 0 2px;
@@ -52,15 +50,15 @@
             display: inline-block;
         }
         .mot.attendu {
-            background-color: #cfe2ff; /* Bleu : mot actuel à lire */
+            background-color: #cfe2ff;
             font-weight: bold;
         }
         .mot.correct {
-            background-color: #d1e7dd; /* Vert : bien lu */
+            background-color: #d1e7dd;
             color: #0f5132;
         }
         .mot.erreur {
-            background-color: #f8d7da; /* Rouge : mal lu */
+            background-color: #f8d7da;
             color: #842029;
             font-weight: bold;
         }
@@ -110,14 +108,13 @@
     
     <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;">
 
-    <!-- Ici on affiche tout le texte avec le surlignage -->
     <div id="zone-texte-complet">Le texte à lire s'affichera ici...</div>
     
     <p id="statut">Cliquez sur le bouton pour activer le micro.</p>
 </div>
 
 <script>
-    let listeMots Bruts = [];
+    let listeMotsBruts = [];
     let indexActuel = 0;
     let tempsDebut = 0;
     let totalMots = 0;
@@ -128,15 +125,14 @@
     const btnStart = document.getElementById('btn-start');
     const statut = document.getElementById('statut');
 
-    // Découpe le texte en gardant les espaces pour l'affichage
     function preparerMots(texte) {
         if (!texte.trim()) return [];
         return texte.split(/\s+/).filter(mot => mot.length > 0);
     }
 
-    // Nettoie un mot pour la comparaison vocale (enlève la ponctuation)
     function nettoyerMot(mot) {
-        return mot.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"«»]/g, "").trim();
+        if (!mot) return "";
+        return mot.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"«»’']/g, "").trim();
     }
 
     texteInput.addEventListener('input', () => {
@@ -206,31 +202,29 @@
 
             const spanActuel = document.getElementById("mot-" + indexActuel);
 
-            if (dernierResultat.includes(motAttendu)) {
-                // Succès : On passe au vert
-                spanActuel.className = "mot correct";
-                indexActuel++;
+            if (spanActuel) {
+                if (dernierResultat.includes(motAttendu) || motAttendu.includes(dernierResultat)) {
+                    spanActuel.className = "mot correct";
+                    indexActuel++;
 
-                if (indexActuel < listeMotsBruts.length) {
-                    // On surligne le mot suivant en bleu
-                    const spanSuivant = document.getElementById("mot-" + indexActuel);
-                    spanSuivant.classList.add('attendu');
-                    statut.textContent = "Correct !";
+                    if (indexActuel < listeMotsBruts.length) {
+                        const spanSuivant = document.getElementById("mot-" + indexActuel);
+                        if (spanSuivant) spanSuivant.classList.add('attendu');
+                        statut.textContent = "Correct !";
+                    } else {
+                        const tempsFin = performance.now();
+                        const tempsTotalSecondes = ((tempsFin - tempsDebut) / 1000).toFixed(1);
+
+                        statut.innerHTML = `<strong>Félicitations ! 🎉</strong> Vous avez lu les <strong>${totalMots} mots</strong> en <strong>${tempsTotalSecondes} secondes</strong> !`;
+                        
+                        btnStart.disabled = false;
+                        texteInput.disabled = false;
+                        recognition.stop();
+                    }
                 } else {
-                    // Fin du texte
-                    const tempsFin = performance.now();
-                    const tempsTotalSecondes = ((tempsFin - tempsDebut) / 1000).toFixed(1);
-
-                    statut.innerHTML = `<strong>Félicitations ! 🎉</strong> Vous avez lu les <strong>${totalMots} mots</strong> en <strong>${tempsTotalSecondes} secondes</strong> !`;
-                    
-                    btnStart.disabled = false;
-                    texteInput.disabled = false;
-                    recognition.stop();
+                    spanActuel.className = "mot attendu erreur";
+                    statut.textContent = `J'ai entendu "${dernierResultat}". Réessayez pour le mot en rouge.`;
                 }
-            } else {
-                // Erreur : On applique le rouge temporairement
-                spanActuel.className = "mot attendu erreur";
-                statut.textContent = `J'ai entendu "${dernierResultat}". Réessayez pour le mot en rouge.`;
             }
         };
 
