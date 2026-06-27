@@ -152,7 +152,6 @@
     const btnRandom = document.getElementById('btn-random');
     const statut = document.getElementById('statut');
 
-    // Filtre les mots pour éliminer les ponctuations seules (!, ?, ., :, etc.) dès le départ
     function preparerMots(texte) {
         if (!texte.trim()) return [];
         return texte.split(/\s+/).filter(mot => {
@@ -165,7 +164,9 @@
         if (!mot) return "";
         let motPropre = mot.toLowerCase().replace(/’/g, "'");
         if (motPropre === "lili") return "lily";
-        return motPropre.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"«»!]/g, "").trim();
+        // Remplacement crucial : on transforme le tiret en espace pour gérer "là-bas" -> "là bas"
+        motPropre = motPropre.replace(/-/g, " ");
+        return motPropre.replace(/[.,\/#!$%\^&\*;:{}=\_`~()?"«»!]/g, "").trim();
     }
 
     function rafraichirNombreMots() {
@@ -205,13 +206,11 @@
             });
         }
 
-        // Fonction automatique améliorée : passe Taoki ET les ponctuations résiduelles blanches
         function verifierEtPasserMotsSpeciaux() {
             if (indexActuel >= listeMotsBruts.length) return;
             
             const motAttendu = nettoyerMot(listeMotsBruts[indexActuel]);
             
-            // Si c'est Taoki OU si le mot nettoyé est vide (uniquement de la ponctuation passée entre les mailles)
             if (motAttendu === "taoki" || motAttendu === "") {
                 const spanActuel = document.getElementById("mot-" + indexActuel);
                 if (spanActuel) {
@@ -221,7 +220,6 @@
                     if (indexActuel < listeMotsBruts.length) {
                         const spanSuivant = document.getElementById("mot-" + indexActuel);
                         if (spanSuivant) spanSuivant.classList.add('attendu');
-                        // On relance la vérification en chaîne
                         verifierEtPasserMotsSpeciaux();
                     } else {
                         finaliserLecture();
@@ -251,7 +249,6 @@
             texteInput.disabled = true;
             btnRandom.disabled = true;
 
-            // Premier scan dès le démarrage
             verifierEtPasserMotsSpeciaux();
             
             recognition.start();
@@ -289,7 +286,8 @@
                 }
             }
 
-            let texteGlobal = (transcriptionFinale + " " + transcriptionEnCours).toLowerCase().replace(/’/g, "'").trim();
+            // On nettoie aussi le flux audio des tirets au cas où
+            let texteGlobal = (transcriptionFinale + " " + transcriptionEnCours).toLowerCase().replace(/’/g, "'").replace(/-/g, " ").trim();
             
             const motAttendu = nettoyerMot(listeMotsBruts[indexActuel]);
             const spanActuel = document.getElementById("mot-" + indexActuel);
@@ -301,6 +299,8 @@
                     motValide = true;
                 } else if (motAttendu === "lily" && texteGlobal.includes("lili")) {
                     motValide = true;
+                } else if ((motAttendu === "la bas" || motAttendu === "là bas") && (texteGlobal.includes("la bas") || texteGlobal.includes("là bas"))) {
+                    motValide = true;
                 }
 
                 if (motValide) {
@@ -311,7 +311,6 @@
                         const spanSuivant = document.getElementById("mot-" + indexActuel);
                         if (spanSuivant) spanSuivant.classList.add('attendu');
                         
-                        // Scan automatique après validation d'un mot valide
                         verifierEtPasserMotsSpeciaux();
                     } else {
                         finaliserLecture();
